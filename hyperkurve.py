@@ -11,8 +11,8 @@ TDELTA = 60./float(FPS)
 pi = 3.14159265359
 
 
-P = 6
-Q = 4
+P = 7
+Q = 3
 
 sgn = [1,-1][P%2]
 
@@ -93,25 +93,41 @@ def r2R(r):
     return math.acosh(1 + 2* r*r/(1-r*r) )
 
 l = math.log(2)
+l2 = math.log(64)
 
 def decomp_noise(c):
     n = int ( r2R(abs(c)) / l)
-    m = int ( (math.atan2(c.real,c.imag)+pi) /( 2 * pi )*(2**(n))  )
+    m = int ( (math.atan2(c.real,c.imag)+pi) /( 2 * pi )*7*(2**(n))  )
     return (n,m)
 
-def terrain_color(c):
-    nn,mm = decomp_noise(c)
+def decomp_noise_large(c):
+    n = int ( (r2R(abs(c)) + l2/2.) / l2)
+    m = int ( (math.atan2(c.real,c.imag)+pi) /( 2 * pi )*(32**(n))  )
+    return (n,m)
+
+def ranc(t):
     tmp = random.getstate()
-
-    random.seed((nn,mm))
-    ret =  (random.randint(0,255),min(255,(mm%7)*30),125)
-    
+    random.seed(t)
+    r = (random.randint(0,125),random.randint(0,125),random.randint(0,125))
     random.setstate(tmp)
+    return r
 
-    return ret
+def terrain_color(c):
+    c1 = ranc( decomp_noise_large(c))
+    c2 = ranc( decomp_noise(c))
+    
+    
+
+    return tuple ( [ int( c1[i] + c2[i]*0.13 )for i in range(3) ] )
 
 
 euc_circumradius = R2r(circumradius)
+euc_apotheme = R2r(apotheme)
+
+p7 = [ Point(1.*euc_circumradius * cmath.exp(2*pi/float(P) *(i-.5+.5*(P%2))*1J)) for i in range(P)]
+p7m = [ Point(1.*euc_apotheme * cmath.exp(2*pi/float(P) *(i+.5*(P%2))*1J)) for i in range(P)]
+
+
 
 import pygame
 from pygame.locals import *
@@ -212,17 +228,23 @@ class Manager:
                     D(Point(t.m[1]/t.m[0].conjugate()).Mobius(self.view).v, 0) < 3.5,
                     self.tiles)
 
+        def c2screen(self,c):
+            return (int(self.width/2 * (1+c.real)), int(self.width/2 *(1+c.imag)))
 
         def drawtiles(self):
             
-            p7 = [ Point(1.*euc_circumradius * cmath.exp(2*pi/float(P) *(i-.5+.5*(P%2))*1J)) for i in range(P)]
             #sys.exit()
             for t in self.tiles:
                 plist = []
-                for p in p7:
+                for i in range(P):
+                    p = p7[i]
+                    pm = p7m[i]
                     np = p.Mobius(t.m)
+                    npm = pm.Mobius(t.m)
                     np = np.Mobius(self.view)
-                    plist.append((self.width/2*(1+np.x()),self.width/2*(1+np.y())))
+                    npm = npm.Mobius(self.view)
+                    plist.append(self.c2screen(np.v))
+                    plist.append(self.c2screen(npm.v))
 
                 #C = (int( D(Point(t.m[1]/t.m[0].conjugate(), -self.view[1]/self.view[0])*20),50,0)
                 C = terrain_color(t.m[1]/t.m[0].conjugate())
