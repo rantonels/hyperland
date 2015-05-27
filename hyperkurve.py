@@ -28,13 +28,14 @@ def D(u,v):
     return math.acosh(1+delta)
 
 class Point:
-    def __init__(self,p,colour=(255,255,255),label=None):
+    def __init__(self,p,colour=(255,255,255),label=None,size=3):
         if abs(p) >= 1:
             print "ERROR"
             #sys.exit()
         self.v = p
         self.colour = colour
         self.label = label
+        self.size = size
 
     def Mobius(self,m):
         alfa,beta = m
@@ -143,7 +144,12 @@ class Manager:
 
                 self.points = []# [ Point(.5*cmath.exp((0.1+0.5J)*(i))) for i in range(-20,5) ]
 
-                self.points.append(Point(0,colour=(255,255,255),label="0"))
+                RRR = R2r(15)
+                self.points.append(Point(0,colour=(255,255,255),label="0",size=15))
+                self.points.append(Point(RRR,colour=(125,0,0),label="E",size=15))
+                self.points.append(Point(-RRR,colour=(0,125,0),label="W",size=15))
+                self.points.append(Point(RRR*1J,colour=(0,0,125),label="S",size=15))
+                self.points.append(Point(-RRR*1J,colour=(100,100,0),label="N",size=15))
 
                 for i in range(2,7):
                     R = i * math.log(8)
@@ -227,9 +233,13 @@ class Manager:
             self.tiles = filter( lambda t:
                     D(Point(t.m[1]/t.m[0].conjugate()).Mobius(self.view).v, 0) < 3.5,
                     self.tiles)
+        
+        def pdiskradius(self):
+            return self.height/2 * 0.95
 
         def c2screen(self,c):
-            return (int(self.width/2 * (1+c.real)), int(self.width/2 *(1+c.imag)))
+            r = self.pdiskradius()
+            return (int(self.width/2 + r*c.real), int(self.height/2 + r* c.imag))
 
         def drawtiles(self):
             
@@ -254,18 +264,22 @@ class Manager:
 
         def drawdot(self,p,colour=(255,255,255),size=3):
             rr = size*(1-p.x()**2 - p.y()**2)
-            pygame.draw.circle(self.screen,colour,(int(self.width/2*(1+p.x())),int(self.width/2*(1+p.y()))),int(rr),0)
+            pygame.draw.circle(self.screen,colour,self.c2screen(p.v),max(0,int(rr)),0)
 
             if rr<0.1:
                 if p.label != None:
-                    s = (1+1J + p.v/abs(p.v)*0.99) * self.width/2
+                    s = (p.v/abs(p.v)*1.03)
                     
-                    RR = Rect(int(s.real - 5),int(s.imag-5),10,10)
+                    rcent = self.c2screen(s)
+                    RR = Rect(rcent[0]-5,rcent[1]-5,10,10)
                     pygame.draw.rect(self.screen,colour,RR,0)
 
         def drawboundary(self,radius):
-            K = (math.cosh(radius)+1)/2
-            p = math.sqrt(K/(K+1))
+            #K = (math.cosh(radius)+1)/2
+            #p = math.sqrt(K/(K+1))
+            
+            p = R2r(radius) 
+
             p1 = Point(p*1J)
             p2 = Point(-p*1J)
             p3 = Point(p*1)
@@ -288,7 +302,7 @@ class Manager:
             c = Point(cx+cy*1J)
             r = abs(p1.v-c.v)
 
-            pygame.draw.circle(self.screen,(125,0,0),(int(self.width/2*(1+c.x())),int(self.width/2*(1+c.y()))),int(self.width/2*r),2)
+            pygame.draw.circle(self.screen,(125,0,0), self.c2screen(cx + cy*1J) ,int(self.pdiskradius()*r),2)
 
 
         def draw(self,view=(1,0)):
@@ -298,11 +312,11 @@ class Manager:
 
             for p in self.points:
                 np = p.Mobius(view)
-                self.drawdot(np,p.colour)
+                self.drawdot(np,p.colour,size=p.size)
 
             self.drawboundary(15)
 
-            pygame.draw.circle(self.screen,(255,255,255),(self.width/2,self.width/2),self.width/2,3)
+            pygame.draw.circle(self.screen,(255,255,255),(self.width/2,self.height/2),int(self.pdiskradius()),3)
             
             pygame.display.flip()
 
@@ -314,6 +328,6 @@ class Manager:
                 self.clock.tick(FPS)
 
 
-manager = Manager(1000,1000)
+manager = Manager(1600,1000)
 
 manager.mainLoop()
